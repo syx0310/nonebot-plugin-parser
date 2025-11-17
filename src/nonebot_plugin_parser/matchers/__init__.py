@@ -97,6 +97,9 @@ async def _message_reaction(
     event: Event,
     status: Literal["fail", "resolving", "done"],
 ) -> None:
+    if not pconfig.enable_message_reaction:
+        return
+
     emoji_map = {
         "fail": ("10060", "❌"),
         "resolving": ("424", "👀"),

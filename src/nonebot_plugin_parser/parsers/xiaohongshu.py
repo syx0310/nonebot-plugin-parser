@@ -2,13 +2,13 @@ import json
 import re
 from typing import Any, ClassVar
 from typing_extensions import override
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from httpx import AsyncClient, Cookies
 from msgspec import Struct, convert, field
 from nonebot import logger
 
-from .base import BaseParser, ParseException, Platform, PlatformEnum
+from .base import BaseParser, ParseException, Platform, PlatformEnum, pconfig
 
 
 class XiaoHongShuParser(BaseParser):
@@ -36,6 +36,9 @@ class XiaoHongShuParser(BaseParser):
             "sec-fetch-dest": "empty",
         }
         self.ios_headers.update(discovery_headers)
+        # 启用 cookie 模式时，直接在 PC UA headers 中附加 Cookie，行为与旧版保持一致
+        if pconfig.use_xhs_cookie and pconfig.xhs_ck:
+            self.headers["cookie"] = pconfig.xhs_ck
 
     @override
     async def parse(self, keyword: str, searched: re.Match[str]):
@@ -43,10 +46,18 @@ class XiaoHongShuParser(BaseParser):
         url = searched.group(0)
         # 处理 xhslink 短链
         if "xhslink" in url:
-            url = await self.get_redirect_url(url, self.ios_headers)
+            # 旧版实现使用的是通用 headers（PC UA）而非 iOS headers
+            # 这里在开启 cookie 解析时也优先使用 PC headers，以保持行为一致
+            redirect_headers = self.headers if pconfig.use_xhs_cookie else self.ios_headers
+            url = await self.get_redirect_url(url, redirect_headers)
             logger.debug(f"xhslink redirect url: {url}")
 
         urlpath = urlparse(url).path
+
+        # 启用 cookie 模式时，统一走 /explore 入口，行为与旧版保持一致
+        if pconfig.use_xhs_cookie and pconfig.xhs_ck:
+            xhs_id, explore_url = self._normalize_to_explore_url(url)
+            return await self._parse_explore(explore_url, xhs_id)
 
         if urlpath.startswith("/explore/"):
             xhs_id = urlpath.split("/")[-1]
@@ -55,6 +66,24 @@ class XiaoHongShuParser(BaseParser):
             return await self._parse_discovery(url)
         else:
             raise ParseException(f"不支持的小红书链接: {url}, urlpath: {urlpath}")
+
+    def _normalize_to_explore_url(self, url: str) -> tuple[str, str]:
+        """将各种小红书链接统一转换为 /explore/ 形式，复用旧版解析逻辑。"""
+        # ?: 非捕获组
+        pattern = r"(?:/explore/|/discovery/item/|source=note&noteId=)(\w+)"
+        matched = re.search(pattern, url)
+        if not matched:
+            raise ParseException("小红书分享链接不完整")
+        xhs_id = matched.group(1)
+
+        # 解析 URL 参数，补全 xsec_source 和 xsec_token
+        parsed_url = urlparse(url)
+        params = parse_qs(parsed_url.query)
+        xsec_source = params.get("xsec_source", [None])[0] or "pc_feed"
+        xsec_token = params.get("xsec_token", [None])[0]
+
+        explore_url = f"https://www.xiaohongshu.com/explore/{xhs_id}?xsec_source={xsec_source}&xsec_token={xsec_token}"
+        return xhs_id, explore_url
 
     async def _parse_explore(self, url: str, xhs_id: str):
         async with AsyncClient(

@@ -172,6 +172,12 @@ parser_bili_video_quality=80
 # [可选] Youtube Cookie, Youtube 视频因人机检测下载失败，需填
 parser_ytb_ck=""
 
+# [可选] 小红书 Cookie，建议使用登录后 Cookie 以减少图片水印
+parser_xhs_ck=""
+
+# [可选] 是否使用小红书 Cookie 进行解析（开启后将不再使用免登陆预览）
+parser_xhs_use_cookie=False
+
 # [可选] 代理, 仅作用于 youtube, tiktok 解析
 # 推特解析会自动读取环境变量中的 http_proxy / https_proxy(代理软件通常会自动设置)
 parser_proxy=None
@@ -209,6 +215,9 @@ parser_custom_font="LXGWZhenKaiGB-Regular.ttf"
 
 # [可选] 是否需要转发媒体内容(超过 4 项时始终使用合并转发)
 parser_need_forward_contents=True
+
+# [可选] 是否在解析过程中为原消息添加 reaction 表情
+parser_enable_message_reaction=True
 ```
 
 </details>

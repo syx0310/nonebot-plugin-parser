@@ -29,6 +29,8 @@ class Config(BaseModel):
     """bilibili cookies"""
     parser_ytb_ck: str | None = None
     """youtube cookies"""
+    parser_xhs_ck: str | None = None
+    """xiaohongshu cookies"""
     parser_proxy: str | None = None
     """代理"""
     parser_need_upload: bool = False
@@ -43,6 +45,10 @@ class Config(BaseModel):
     """是否在解析结果中附加原始URL"""
     parser_disabled_platforms: list[PlatformEnum] = []
     """禁止的解析器"""
+    parser_xhs_use_cookie: bool = False
+    """是否使用 cookie 解析小红书"""
+    parser_enable_message_reaction: bool = True
+    """是否在解析过程中发送 reaction 表情"""
     parser_bili_video_codes: list[VideoCodecs] = [
         VideoCodecs.AVC,
         VideoCodecs.AV1,
@@ -119,6 +125,11 @@ class Config(BaseModel):
         return self.parser_ytb_ck
 
     @property
+    def xhs_ck(self) -> str | None:
+        """xiaohongshu cookies"""
+        return self.parser_xhs_ck
+
+    @property
     def proxy(self) -> str | None:
         """代理"""
         return self.parser_proxy
@@ -147,6 +158,16 @@ class Config(BaseModel):
     def need_forward_contents(self) -> bool:
         """是否需要转发媒体内容"""
         return self.parser_need_forward_contents
+
+    @property
+    def use_xhs_cookie(self) -> bool:
+        """是否使用 cookie 解析小红书"""
+        return self.parser_xhs_use_cookie
+
+    @property
+    def enable_message_reaction(self) -> bool:
+        """是否在解析过程中发送 reaction 表情"""
+        return self.parser_enable_message_reaction
 
 
 pconfig: Config = get_plugin_config(Config)
